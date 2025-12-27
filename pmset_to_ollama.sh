@@ -532,4 +532,21 @@ echo "  - Install Colima: brew install colima docker docker-compose"
 echo "  - Pull embedding model: ollama pull nomic-embed-text"
 echo ""
 print_warning "Testing reboot persistence..."
-read -p "Reboot now to verify auto-start? (y/n
+read -p "Reboot now to verify auto-start? (y/n): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    print_info "After reboot, verify with:"
+    echo "  - ps aux | grep ollama"
+    echo "  - curl http://localhost:11434/api/tags"
+    echo "  - pmset -g"
+    echo ""
+    print_info "Rebooting in 5 seconds..."
+    sleep 5
+    sudo reboot
+else
+    print_warning "Remember to test reboot manually!"
+    echo ""
+    print_status "Setup complete!"
+    echo ""
+    print_info "Your headless Mac Mini M4 is configured for 24/7 LLM inference."
+fi
