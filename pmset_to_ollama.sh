@@ -34,6 +34,31 @@ print_info() {
     echo -e "${NC}[ℹ]${NC} $1"
 }
 
+# Function to check if binary supports ARM64
+check_binary_arm64() {
+    local binary_path=$1
+    
+    if file "$binary_path" | grep -q "universal binary"; then
+        if file "$binary_path" | grep -q "arm64"; then
+            print_status "Ollama is a universal binary (includes ARM64)"
+            return 0
+        else
+            print_error "Universal binary but no ARM64 support found"
+            return 1
+        fi
+    elif file "$binary_path" | grep -q "arm64"; then
+        print_status "Ollama is native ARM64"
+        return 0
+    elif file "$binary_path" | grep -q "x86_64"; then
+        print_error "Ollama is x86_64 only (no ARM64 support)"
+        return 1
+    else
+        print_warning "Could not determine architecture"
+        file "$binary_path"
+        return 1
+    fi
+}
+
 # Check if running on macOS
 if [[ "$OSTYPE" != "darwin"* ]]; then
     print_error "This script must be run on macOS"
@@ -68,34 +93,56 @@ echo "Step 1: Ollama Installation"
 echo "=================================================="
 echo ""
 
-OLLAMA_APP_PATH="/Applications/Ollama.app"
-OLLAMA_BINARY="$OLLAMA_APP_PATH/Contents/Resources/ollama"
+OLLAMA_BINARY=""
 
-# Check if Ollama is already installed
-if [ -d "$OLLAMA_APP_PATH" ] && [ -f "$OLLAMA_BINARY" ]; then
-    print_status "Ollama already installed at $OLLAMA_APP_PATH"
+# Check for Ollama in different locations
+if [ -f "/usr/local/bin/ollama" ]; then
+    OLLAMA_BINARY="/usr/local/bin/ollama"
+    print_status "Ollama found at /usr/local/bin/ollama"
+elif [ -f "/opt/homebrew/bin/ollama" ]; then
+    OLLAMA_BINARY="/opt/homebrew/bin/ollama"
+    print_status "Ollama found at /opt/homebrew/bin/ollama"
+elif [ -f "/Applications/Ollama.app/Contents/Resources/ollama" ]; then
+    OLLAMA_BINARY="/Applications/Ollama.app/Contents/Resources/ollama"
+    print_status "Ollama found at /Applications/Ollama.app"
+fi
+
+# Verify existing installation
+if [ -n "$OLLAMA_BINARY" ]; then
+    print_info "Verifying Ollama installation..."
     
-    # Verify it's ARM64
-    ARCH=$(file "$OLLAMA_BINARY" | grep -o "arm64\|x86_64")
-    if [ "$ARCH" = "arm64" ]; then
-        print_status "Ollama is native ARM64"
+    if check_binary_arm64 "$OLLAMA_BINARY"; then
+        print_status "Ollama installation verified"
+        
+        # Show version
+        OLLAMA_VERSION=$("$OLLAMA_BINARY" --version 2>/dev/null || echo "unknown")
+        print_info "Ollama version: $OLLAMA_VERSION"
     else
-        print_error "Existing Ollama is x86_64 (Rosetta)"
-        read -p "Remove and reinstall ARM64 version? (y/n): " -n 1 -r
+        print_error "Ollama installation verification failed"
+        read -p "Remove and reinstall? (y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_info "Removing existing installation..."
-            sudo rm -rf "$OLLAMA_APP_PATH"
+            if [ -f "/usr/local/bin/ollama" ]; then
+                sudo rm -f /usr/local/bin/ollama
+            fi
+            if [ -f "/opt/homebrew/bin/ollama" ]; then
+                brew uninstall ollama 2>/dev/null || sudo rm -f /opt/homebrew/bin/ollama
+            fi
+            if [ -d "/Applications/Ollama.app" ]; then
+                sudo rm -rf /Applications/Ollama.app
+            fi
+            OLLAMA_BINARY=""
             print_status "Removed"
         else
-            print_error "Cannot proceed with x86_64 version"
+            print_error "Cannot proceed with problematic installation"
             exit 1
         fi
     fi
 fi
 
 # Install Ollama if not present
-if [ ! -d "$OLLAMA_APP_PATH" ]; then
+if [ -z "$OLLAMA_BINARY" ]; then
     print_info "Ollama not found. Installing from ollama.com..."
     
     # Create temporary directory
@@ -105,7 +152,6 @@ if [ ! -d "$OLLAMA_APP_PATH" ]; then
     print_info "Downloading Ollama installer..."
     
     # Download the latest Ollama installer
-    # The official download URL redirects to the latest version
     if ! curl -L https://ollama.com/download/Ollama-darwin.zip -o Ollama.zip; then
         print_error "Failed to download Ollama"
         rm -rf "$TMP_DIR"
@@ -123,13 +169,30 @@ if [ ! -d "$OLLAMA_APP_PATH" ]; then
     
     print_status "Extraction complete"
     
-    print_info "Installing Ollama to /Applications..."
+    # Check what we got
     if [ -d "Ollama.app" ]; then
-        # Move to Applications
+        # App bundle - install to /Applications and symlink binary
+        print_info "Installing Ollama.app to /Applications..."
         sudo mv Ollama.app /Applications/
+        
+        # Create symlink to /usr/local/bin for CLI access
+        sudo mkdir -p /usr/local/bin
+        sudo ln -sf /Applications/Ollama.app/Contents/Resources/ollama /usr/local/bin/ollama
+        
+        OLLAMA_BINARY="/usr/local/bin/ollama"
+        print_status "Ollama installed successfully"
+    elif [ -f "ollama" ]; then
+        # Standalone binary
+        print_info "Installing Ollama binary to /usr/local/bin..."
+        sudo mkdir -p /usr/local/bin
+        sudo mv ollama /usr/local/bin/ollama
+        sudo chmod +x /usr/local/bin/ollama
+        
+        OLLAMA_BINARY="/usr/local/bin/ollama"
         print_status "Ollama installed successfully"
     else
-        print_error "Ollama.app not found in download"
+        print_error "Unexpected download contents"
+        ls -la
         rm -rf "$TMP_DIR"
         exit 1
     fi
@@ -141,11 +204,11 @@ if [ ! -d "$OLLAMA_APP_PATH" ]; then
     
     # Verify installation
     if [ -f "$OLLAMA_BINARY" ]; then
-        ARCH=$(file "$OLLAMA_BINARY" | grep -o "arm64\|x86_64")
-        if [ "$ARCH" = "arm64" ]; then
-            print_status "Verified: Ollama is native ARM64"
+        if check_binary_arm64 "$OLLAMA_BINARY"; then
+            OLLAMA_VERSION=$("$OLLAMA_BINARY" --version 2>/dev/null || echo "unknown")
+            print_status "Verified: Ollama $OLLAMA_VERSION installed"
         else
-            print_error "Downloaded version is not ARM64!"
+            print_error "Installation verification failed"
             exit 1
         fi
     else
@@ -250,6 +313,7 @@ echo
 BIND_ALL=${BIND_ALL:-y}
 if [[ $BIND_ALL =~ ^[Yy]$ ]]; then
     OLLAMA_HOST="0.0.0.0:11434"
+    print_warning "Binding to all interfaces - ensure firewall is configured!"
 else
     OLLAMA_HOST="127.0.0.1:11434"
 fi
@@ -353,6 +417,7 @@ echo ""
 
 # Unload if already loaded
 sudo launchctl unload "$PLIST_PATH" 2>/dev/null || true
+sleep 1
 
 # Load the service
 print_info "Loading Ollama service..."
@@ -379,9 +444,13 @@ if pgrep -x ollama > /dev/null; then
     OLLAMA_PID=$(pgrep -x ollama)
     print_info "Process ID: $OLLAMA_PID"
     
-    # Check architecture of running process
-    PROC_ARCH=$(lipo -archs /proc/$OLLAMA_PID/exe 2>/dev/null || echo "unknown")
-    print_info "Process architecture: $PROC_ARCH"
+    # Check if running natively
+    if ps -p $OLLAMA_PID -o comm= 2>/dev/null | head -1 | xargs file 2>/dev/null | grep -q "arm64"; then
+        print_status "Ollama is running natively on ARM64"
+    else
+        # Try alternative check
+        print_info "Checking process architecture..."
+    fi
 else
     print_error "Ollama process not running!"
     print_info "Check logs:"
@@ -394,29 +463,40 @@ fi
 print_info "Testing API endpoint..."
 sleep 2
 
-if curl -s http://localhost:11434/api/tags > /dev/null; then
+API_TEST=$(curl -s http://localhost:11434/api/tags 2>&1)
+if [ $? -eq 0 ]; then
     print_status "API endpoint responding"
 else
     print_warning "API endpoint not responding yet (may still be starting)"
+    print_info "Wait a few seconds and try: curl http://localhost:11434/api/tags"
 fi
 
 # Display service status
 echo ""
 print_info "Service status:"
-sudo launchctl list | grep ollama || print_warning "Service not found in launchctl list"
+LAUNCHCTL_STATUS=$(sudo launchctl list | grep ollama || echo "not found")
+if [[ "$LAUNCHCTL_STATUS" != "not found" ]]; then
+    echo "  $LAUNCHCTL_STATUS"
+    print_status "Service registered with launchd"
+else
+    print_warning "Service not found in launchctl list"
+fi
 
 echo ""
 echo "=================================================="
 echo "Setup Summary"
 echo "=================================================="
 echo ""
-print_status "Ollama installed and verified (ARM64)"
+print_status "Ollama installed and verified"
 print_status "Power management configured for headless operation"
 print_status "Ollama service created and started"
 print_status "Service will auto-start on boot"
 echo ""
+print_info "Installation details:"
+echo "  Binary location: $OLLAMA_BINARY"
+echo "  Ollama version: $("$OLLAMA_BINARY" --version 2>/dev/null || echo 'unknown')"
+echo ""
 print_info "Configuration:"
-echo "  Ollama version: $(${OLLAMA_BINARY} --version 2>/dev/null || echo 'unknown')"
 echo "  Max loaded models: $MAX_MODELS"
 echo "  Keep alive: $KEEP_ALIVE_HOURS hours"
 echo "  Parallel requests: $NUM_PARALLEL"
@@ -430,26 +510,26 @@ echo ""
 print_info "Useful commands:"
 echo "  Check status: sudo launchctl list | grep ollama"
 echo "  Stop service: sudo launchctl stop com.ollama.server"
-echo "  Restart service: sudo launchctl stop com.ollama.server && sudo launchctl start com.ollama.server"
+echo "  Restart: sudo launchctl stop com.ollama.server && sudo launchctl start com.ollama.server"
 echo "  View logs: tail -f /tmp/ollama.log"
 echo "  Test API: curl http://localhost:11434/api/tags"
-echo "  Pull a model: ${OLLAMA_BINARY} pull qwen2.5-coder:32b"
-echo "  List models: ${OLLAMA_BINARY} list"
+echo "  Pull a model: ollama pull qwen2.5-coder:32b"
+echo "  List models: ollama list"
+echo "  Run a model: ollama run qwen2.5-coder:7b"
+echo ""
+print_info "Power settings verification:"
+echo "  View settings: pmset -g"
+echo "  Check after reboot to ensure persistence"
 echo ""
 print_info "Next steps:"
 echo "  1. Test reboot to verify auto-start"
-echo "  2. Pull your first model: ${OLLAMA_BINARY} pull qwen2.5-coder:7b"
-echo "  3. Test inference: ${OLLAMA_BINARY} run qwen2.5-coder:7b"
+echo "  2. Pull your first model: ollama pull qwen2.5-coder:7b"
+echo "  3. Test inference: ollama run qwen2.5-coder:7b 'write a hello world in python'"
+echo "  4. Monitor performance: watch -n 1 'ps aux | grep ollama'"
 echo ""
-print_info "Testing reboot persistence..."
-read -p "Reboot now to verify auto-start? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    print_info "Rebooting in 5 seconds..."
-    sleep 5
-    sudo reboot
-else
-    print_warning "Remember to test reboot manually later!"
-    echo ""
-    print_status "Setup complete!"
-fi
+print_info "For LangServe/RAG setup (later):"
+echo "  - Install Colima: brew install colima docker docker-compose"
+echo "  - Pull embedding model: ollama pull nomic-embed-text"
+echo ""
+print_warning "Testing reboot persistence..."
+read -p "Reboot now to verify auto-start? (y/n
