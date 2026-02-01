@@ -3,9 +3,37 @@
 # Headless Mac Mini M4 Setup Script
 # Configures power management and Ollama service for 24/7 LLM inference
 # macOS 26 Tahoe compatible
+#
+# ⚠️  DEPRECATED: This script has been refactored into modular components
+# ⚠️  Please use the new modular scripts instead:
+# ⚠️    ./setup.sh install all          # Full setup
+# ⚠️    ./scripts/power_management.sh   # Power management only
+# ⚠️    ./scripts/ollama_setup.sh       # Ollama only
+#
+# This script will continue to work but is no longer maintained.
 
 set -e  # Exit on error
 
+echo "=================================================="
+echo "⚠️  DEPRECATED SCRIPT"
+echo "=================================================="
+echo ""
+echo "This script has been replaced by modular components."
+echo ""
+echo "New usage:"
+echo "  ./setup.sh install all          # Full setup"
+echo "  ./scripts/power_management.sh   # Power management"
+echo "  ./scripts/ollama_setup.sh       # Ollama only"
+echo ""
+echo "This script will continue working but is not maintained."
+echo ""
+read -p "Continue with this deprecated script? (y/n): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Cancelled. Please use ./setup.sh instead."
+    exit 0
+fi
+echo ""
 echo "=================================================="
 echo "Headless Mac Mini M4 Setup Script"
 echo "=================================================="

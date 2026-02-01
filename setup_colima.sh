@@ -3,9 +3,36 @@
 # Colima + Docker Setup Script for Headless Mac
 # Installs Homebrew (if needed), Colima, Docker CLI, and Docker Compose
 # Configures Colima for headless operation with auto-start
+#
+# ⚠️  DEPRECATED: This script has been refactored into modular components
+# ⚠️  Please use the new modular scripts instead:
+# ⚠️    ./setup.sh install colima       # Colima setup
+# ⚠️    ./scripts/colima_setup.sh       # Direct Colima script
+#
+# The new version is Ollama-aware and optimizes resources!
+# This script will continue to work but is no longer maintained.
 
 set -e  # Exit on error
 
+echo "=================================================="
+echo "⚠️  DEPRECATED SCRIPT"
+echo "=================================================="
+echo ""
+echo "This script has been replaced by modular components."
+echo ""
+echo "New usage (with Ollama awareness):"
+echo "  ./setup.sh install colima       # Full Colima setup"
+echo "  ./scripts/colima_setup.sh       # Direct script"
+echo ""
+echo "This script will continue working but is not maintained."
+echo ""
+read -p "Continue with this deprecated script? (y/n): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Cancelled. Please use ./setup.sh instead."
+    exit 0
+fi
+echo ""
 echo "=================================================="
 echo "Colima + Docker Setup Script"
 echo "=================================================="
