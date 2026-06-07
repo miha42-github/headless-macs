@@ -56,7 +56,7 @@
 
 **Weaknesses**
 - VS Code Copilot agent mode is broken for local GGUF models — tool call loop bug
-  (microsoft/vscode-copilot-chat #3566). Use Roo Code for agentic tasks.
+  (microsoft/vscode-copilot-chat #3566). Use Zoo Code for agentic tasks.
 - Basic tool-call support — no auto-recovery on malformed output (mitigated by Modelfile tuning)
 - `num_ctx` must be set via Modelfile, not the UI — Ollama UI override does not update
   the metadata that clients read
@@ -65,7 +65,7 @@
 - You want to get started quickly
 - You need to manage many different models via a registry
 - You're serving GGUF models with controlled context windows (Modelfile required)
-- You're running general-purpose workloads with Roo Code or Opilot as the client
+- You're running general-purpose workloads with Zoo Code or Opilot as the client
 
 ---
 

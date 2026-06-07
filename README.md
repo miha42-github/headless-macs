@@ -266,12 +266,12 @@ the two-model split pattern (agent vs chat).
 ```
 Base URL: http://<mac-ip>:11434/v1
 API Key:  (any string — Ollama ignores it)
-Model:    qwen3-coder-next-256k-agent   (agentic tasks — use Roo Code)
+Model:    qwen3-coder-next-256k-agent   (agentic tasks — use Zoo Code)
 Model:    qwen3-coder-next-256k         (chat — use Opilot or Copilot)
 ```
 
 **Note:** VS Code Copilot agent mode has a known tool call loop bug with local GGUF models.
-Use Roo Code for agentic tasks. See [`docs/known-issues.md`](docs/known-issues.md).
+Use Zoo Code for agentic tasks. See [`docs/known-issues.md`](docs/known-issues.md).
 
 ### Run containers alongside Ollama (Colima)
 

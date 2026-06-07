@@ -13,7 +13,7 @@ bakes configuration into the model's metadata so clients see the correct values.
 | `OLLAMA_MAX_CONTEXT` env var | Ollama server only | Via plist |
 | Modelfile `PARAMETER num_ctx` | Baked into model metadata | Yes — clients read it |
 
-VS Code, Roo Code, and GitHub Copilot read `num_ctx` from the model's declared metadata via
+VS Code, Zoo Code, and GitHub Copilot read `num_ctx` from the model's declared metadata via
 `/api/show`. If you set 128K in the Ollama UI but the model card declares 256K, clients will
 send 256K-sized requests regardless — causing the KV cache to grow and inference to slow
 progressively across a session.
@@ -67,7 +67,7 @@ choose the appropriate one for their task type:
 
 | Model name | Modelfile | Use case |
 |---|---|---|
-| `qwen3-coder-next-256k-agent` | `qwen3-coder-next-256k-agent.modelfile` | Roo Code, agentic tasks, tool calling |
+| `qwen3-coder-next-256k-agent` | `qwen3-coder-next-256k-agent.modelfile` | Zoo Code, agentic tasks, tool calling |
 | `qwen3-coder-next-256k` | `qwen3-coder-next-256k.modelfile` | Chat, Copilot, explaining, writing docs |
 | `qwen3-coder-next-128k` | `qwen3-coder-next-128k.modelfile` | When KV headroom is needed (multiple models loaded) |
 
@@ -229,10 +229,10 @@ Typical coding sessions use 8–32K of context, so the KV cache stays well below
 
 | Client | Model to use | Endpoint |
 |---|---|---|
-| **Roo Code** (agentic tasks) | `qwen3-coder-next-256k-agent` | `http://doppio-1.lan:11434` |
+| **Zoo Code** (agentic tasks) | `qwen3-coder-next-256k-agent` | `http://doppio-1.lan:11434` |
 | **GitHub Copilot / Opilot** (chat) | `qwen3-coder-next-256k` | `http://doppio-1.lan:11434` |
 | **Autocomplete** | `qwen2.5-coder:7b` (separate pull) | `http://doppio-1.lan:11434` |
 | **Embeddings** | `nomic-embed-text` (separate pull) | `http://doppio-1.lan:11434` |
 
 See `docs/known-issues.md` for the VS Code Copilot agent mode tool call loop issue and
-why Roo Code is used for agentic tasks.
+why Zoo Code is used for agentic tasks.
